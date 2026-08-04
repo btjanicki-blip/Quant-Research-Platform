@@ -1,0 +1,8 @@
+{
+  "run_id": "momentum-demo",
+  "initial_cash": 100000.0,
+  "symbol": "DEMO",
+  "fast_window": 5,
+  "slow_window": 20,
+  "quantity": 100
+}

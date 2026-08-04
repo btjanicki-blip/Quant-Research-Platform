@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.18)
+project(quant_matching_engine LANGUAGES CXX)
+find_package(pybind11 CONFIG REQUIRED)
+pybind11_add_module(quant_matching_engine matching_engine.cpp)
+target_compile_features(quant_matching_engine PRIVATE cxx_std_20)

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-research-platform"
+version = "0.1.0"
+description = "Event-driven, reproducible quantitative research platform"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Quant Research Platform Contributors"}]
+dependencies = []
+
+[project.optional-dependencies]
+data = ["pandas>=2.0", "pyarrow>=14"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["python"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
