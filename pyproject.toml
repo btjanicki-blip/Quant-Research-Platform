@@ -12,7 +12,7 @@ authors = [{name = "Quant Research Platform Contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
-data = ["pandas>=2.0", "pyarrow>=14"]
+data = ["pandas>=2.0", "polars>=0.20", "pyarrow>=14"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [tool.setuptools]
