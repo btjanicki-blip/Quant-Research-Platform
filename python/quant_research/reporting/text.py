@@ -1,4 +1,5 @@
 from ..analytics.performance import PerformanceSummary
+from ..analytics.attribution import TradeAttribution
 
 
 def render_summary(summary: PerformanceSummary) -> str:
@@ -11,3 +12,11 @@ def render_summary(summary: PerformanceSummary) -> str:
             f"value_at_risk_95={summary.value_at_risk_95:.2%}\n"
             f"expected_shortfall_95={summary.expected_shortfall_95:.2%}\n"
             f"fill_count={summary.fill_count}")
+
+
+def render_trade_attribution(attribution: TradeAttribution) -> str:
+    return (f"closed_trades={len(attribution.trades)}\n"
+            f"win_rate={attribution.win_rate:.2%}\n"
+            f"expectancy={attribution.expectancy:.2f}\n"
+            f"profit_factor={attribution.profit_factor:.3f}\n"
+            f"average_holding_period={attribution.average_holding_period}")

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..analytics.attribution import TradeAttribution, summarize_trades
 from ..analytics.performance import PerformanceSummary, summarize
 from ..portfolio.portfolio import Portfolio
 from .config import BacktestConfig
@@ -14,6 +15,7 @@ class BacktestResult:
     equity_curve: tuple[EquityPoint, ...]
     fills: tuple[Fill, ...]
     performance: PerformanceSummary
+    trade_attribution: TradeAttribution
 
 
 class BacktestEngine:
@@ -48,4 +50,5 @@ class BacktestEngine:
             self._strategy.on_data(bar)
             curve.append(self._portfolio.snapshot(bar.timestamp, self._marks))
         self._strategy.on_finish()
-        return BacktestResult(tuple(curve), tuple(self._fills), summarize(curve, self._fills))
+        fills = tuple(self._fills)
+        return BacktestResult(tuple(curve), fills, summarize(curve, fills), summarize_trades(fills))
