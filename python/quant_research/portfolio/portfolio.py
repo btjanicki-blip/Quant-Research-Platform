@@ -39,3 +39,12 @@ class Portfolio:
         market_value = sum(p.quantity * marks.get(symbol, p.average_price) for symbol, p in self.positions.items())
         gross = sum(abs(p.quantity * marks.get(symbol, p.average_price)) for symbol, p in self.positions.items())
         return EquityPoint(timestamp, self.cash + market_value, self.cash, gross)
+
+    def leverage(self, marks: dict[str, float]) -> float:
+        snapshot = self.snapshot(datetime.min, marks)
+        return snapshot.gross_exposure / snapshot.equity if snapshot.equity else float("inf")
+
+    def margin_required(self, marks: dict[str, float], initial_margin_rate: float = 0.50) -> float:
+        if not 0 < initial_margin_rate <= 1:
+            raise ValueError("initial_margin_rate must be in (0, 1]")
+        return self.snapshot(datetime.min, marks).gross_exposure * initial_margin_rate

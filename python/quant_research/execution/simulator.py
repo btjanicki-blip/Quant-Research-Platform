@@ -4,7 +4,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Protocol
 
-from ..core.models import Bar, Fill, Order, OrderStatus, Side
+from ..core.models import Bar, Fill, Order, OrderStatus, OrderType, Side
 
 
 class SlippageModel(Protocol):
@@ -33,7 +33,11 @@ class PerShareCommission:
 
 
 class BarExecutionModel:
-    """Conservative bar-level market execution with latency and volume participation caps."""
+    """Bar-level execution with FIFO submission priority, market and marketable-limit orders.
+
+    Price-time queues within a real limit order book require quote-level data; this model
+    deliberately restricts itself to what OHLCV bars can establish without false precision.
+    """
 
     def __init__(self, slippage: SlippageModel | None = None, commission: CommissionModel | None = None,
                  participation_rate: float = 0.10, latency_bars: int = 0) -> None:
@@ -56,11 +60,14 @@ class BarExecutionModel:
             if order.symbol != bar.symbol or bars_remaining > 0:
                 retained.append((order, max(0, bars_remaining - 1)))
                 continue
+            price = self._execution_price(order, bar)
+            if price is None:
+                retained.append((order, 0))
+                continue
             quantity = min(order.remaining_quantity, capacity)
             if quantity <= 0:
                 retained.append((order, 0))
                 continue
-            price = self._slippage.price(bar, order.side)
             fill = Fill(order.id, order.symbol, order.side, quantity, price, bar.timestamp,
                         self._commission.cost(quantity, price))
             order.filled_quantity += quantity
@@ -71,3 +78,13 @@ class BarExecutionModel:
                 retained.append((order, 0))
         self._pending = retained
         return fills
+
+    def _execution_price(self, order: Order, bar: Bar) -> float | None:
+        if order.order_type is OrderType.MARKET:
+            return self._slippage.price(bar, order.side)
+        assert order.limit_price is not None
+        if order.side is Side.BUY and bar.low <= order.limit_price:
+            return min(order.limit_price, bar.open)
+        if order.side is Side.SELL and bar.high >= order.limit_price:
+            return max(order.limit_price, bar.open)
+        return None

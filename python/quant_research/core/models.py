@@ -22,6 +22,11 @@ class OrderStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class OrderType(str, Enum):
+    MARKET = "market"
+    LIMIT = "limit"
+
+
 @dataclass(frozen=True, slots=True)
 class Bar:
     timestamp: datetime
@@ -45,6 +50,8 @@ class Order:
     side: Side
     quantity: float
     submitted_at: datetime
+    order_type: OrderType = OrderType.MARKET
+    limit_price: float | None = None
     id: str = field(default_factory=lambda: uuid4().hex)
     filled_quantity: float = 0.0
     status: OrderStatus = OrderStatus.NEW
@@ -52,6 +59,10 @@ class Order:
     def __post_init__(self) -> None:
         if self.quantity <= 0:
             raise ValueError("order quantity must be positive")
+        if self.order_type is OrderType.LIMIT and (self.limit_price is None or self.limit_price <= 0):
+            raise ValueError("limit orders require a positive limit_price")
+        if self.order_type is OrderType.MARKET and self.limit_price is not None:
+            raise ValueError("market orders cannot have a limit_price")
 
     @property
     def remaining_quantity(self) -> float:

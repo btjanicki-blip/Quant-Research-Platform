@@ -6,6 +6,7 @@ from ..analytics.attribution import TradeAttribution, summarize_trades
 from ..analytics.performance import PerformanceSummary, summarize
 from ..portfolio.portfolio import Portfolio
 from .config import BacktestConfig
+from .experiments import ExperimentTracker
 from .interfaces import ExecutionModel, MarketDataSource, Strategy
 from .models import EquityPoint, Fill, Order
 
@@ -23,10 +24,11 @@ class BacktestEngine:
 
     def __init__(
         self, data: MarketDataSource, strategy: Strategy, execution: ExecutionModel,
-        portfolio: Portfolio, config: BacktestConfig,
+        portfolio: Portfolio, config: BacktestConfig, tracker: ExperimentTracker | None = None,
     ) -> None:
         self._data, self._strategy = data, strategy
         self._execution, self._portfolio, self._config = execution, portfolio, config
+        self._tracker = tracker
         self._fills: list[Fill] = []
         self._marks: dict[str, float] = {}
 
@@ -34,6 +36,8 @@ class BacktestEngine:
         self._execution.submit(order)
 
     def run(self) -> BacktestResult:
+        if self._tracker:
+            self._tracker.started(self._config)
         self._strategy.initialize(self)
         curve: list[EquityPoint] = []
         previous_timestamp = None
@@ -51,4 +55,7 @@ class BacktestEngine:
             curve.append(self._portfolio.snapshot(bar.timestamp, self._marks))
         self._strategy.on_finish()
         fills = tuple(self._fills)
-        return BacktestResult(tuple(curve), fills, summarize(curve, fills), summarize_trades(fills))
+        result = BacktestResult(tuple(curve), fills, summarize(curve, fills), summarize_trades(fills))
+        if self._tracker:
+            self._tracker.completed(result.performance, result.trade_attribution)
+        return result
