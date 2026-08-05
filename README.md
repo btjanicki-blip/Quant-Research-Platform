@@ -17,6 +17,17 @@ PYTHONPATH=python python3 examples/run_momentum.py
 PYTHONPATH=python python3 -m pytest
 ```
 
+### Visual backtest report
+
+Install the optional plotting dependency, then ask the momentum example to save a PNG report:
+
+```bash
+python3 -m pip install -e '.[dev,visualization]'
+python3 examples/run_momentum.py --report reports/momentum-report.png
+```
+
+The report includes an equity curve with its maximum drawdown interval highlighted, price and buy/sell fill markers, per-period returns, drawdown, and a compact performance/trade summary.
+
 ## Layout
 
 | Path | Responsibility |
