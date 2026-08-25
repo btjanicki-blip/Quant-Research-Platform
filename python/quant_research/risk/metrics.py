@@ -44,21 +44,29 @@ def expected_shortfall(returns: Sequence[float], confidence: float = 0.95) -> fl
 
 
 def summarize_risk(returns: Sequence[float], equity: Sequence[float], periods_per_year: int = 252,
-                   confidence: float = 0.95) -> RiskMetrics:
+                   confidence: float = 0.95, annual_risk_free_rate: float = 0.0) -> RiskMetrics:
     if periods_per_year <= 0:
         raise ValueError("periods_per_year must be positive")
-    mean = sum(returns) / len(returns) if returns else 0.0
-    variance = sum((item - mean) ** 2 for item in returns) / len(returns) if returns else 0.0
+    if annual_risk_free_rate <= -1:
+        raise ValueError("annual_risk_free_rate must be greater than -100%")
+    # Returns are logarithmic. Subtract the matching per-period log risk-free rate
+    # before annualising excess-return statistics.
+    risk_free_per_period = math.log1p(annual_risk_free_rate) / periods_per_year
+    excess_returns = [item - risk_free_per_period for item in returns]
+    mean = sum(excess_returns) / len(excess_returns) if excess_returns else 0.0
+    variance = (sum((item - mean) ** 2 for item in excess_returns) / (len(excess_returns) - 1)
+                if len(excess_returns) > 1 else 0.0)
     deviation = math.sqrt(variance)
-    downside = math.sqrt(sum(min(item, 0) ** 2 for item in returns) / len(returns)) if returns else 0.0
+    downside = (math.sqrt(sum(min(item, 0) ** 2 for item in excess_returns) / len(excess_returns))
+                if excess_returns else 0.0)
     drawdown = maximum_drawdown(equity)
-    annual_return = (1 + mean) ** periods_per_year - 1
+    annual_return = math.exp(mean * periods_per_year) - 1
     return RiskMetrics(
         sharpe_ratio=mean / deviation * math.sqrt(periods_per_year) if deviation else 0.0,
         sortino_ratio=mean / downside * math.sqrt(periods_per_year) if downside else 0.0,
         calmar_ratio=annual_return / abs(drawdown) if drawdown else 0.0,
-        value_at_risk=value_at_risk(returns, confidence),
-        expected_shortfall=expected_shortfall(returns, confidence),
+        value_at_risk=value_at_risk(excess_returns, confidence),
+        expected_shortfall=expected_shortfall(excess_returns, confidence),
         maximum_drawdown=drawdown,
     )
 

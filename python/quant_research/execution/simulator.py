@@ -79,6 +79,21 @@ class BarExecutionModel:
         self._pending = retained
         return fills
 
+    def close_position(self, symbol: str, quantity: float, bar: Bar) -> Fill:
+        """Execute an end-of-test liquidation at the final bar close.
+
+        Liquidations use the same slippage and commission models as ordinary market
+        orders, but deliberately bypass participation and latency: there is no later
+        bar on which a forced end-of-period order could otherwise execute.
+        """
+        if quantity == 0:
+            raise ValueError("cannot close a zero position")
+        side = Side.SELL if quantity > 0 else Side.BUY
+        size = abs(quantity)
+        price = self._slippage.price(bar, side)
+        return Fill("end-of-backtest-liquidation", symbol, side, size, price, bar.timestamp,
+                    self._commission.cost(size, price))
+
     def _execution_price(self, order: Order, bar: Bar) -> float | None:
         if order.order_type is OrderType.MARKET:
             return self._slippage.price(bar, order.side)

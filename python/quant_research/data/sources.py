@@ -1,11 +1,61 @@
 from __future__ import annotations
 
 import csv
+import math
+import random
 from collections.abc import Iterable, Iterator
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from ..core.models import Bar
+
+
+def simulate_stochastic_volatility_bars(
+    symbol: str,
+    start: datetime,
+    periods: int,
+    *,
+    initial_price: float = 100.0,
+    annual_drift: float = 0.08,
+    annual_volatility: float = 0.22,
+    volatility_of_volatility: float = 0.35,
+    mean_reversion: float = 3.0,
+    volume_mean: float = 1_000_000.0,
+    seed: int | None = None,
+) -> tuple[Bar, ...]:
+    """Generate reproducible daily OHLCV bars using mean-reverting stochastic volatility.
+
+    This is intended for examples and tests where real data is unavailable; it avoids
+    deterministic trends and preserves valid OHLC relationships.
+    """
+    if periods <= 0 or initial_price <= 0 or annual_volatility <= 0 or volume_mean <= 0:
+        raise ValueError("periods, initial_price, annual_volatility, and volume_mean must be positive")
+    if volatility_of_volatility < 0 or mean_reversion < 0:
+        raise ValueError("volatility_of_volatility and mean_reversion cannot be negative")
+    generator = random.Random(seed)
+    price = initial_price
+    volatility = annual_volatility
+    dt = 1 / 252
+    bars: list[Bar] = []
+    timestamp = start
+    for _ in range(periods):
+        opening = price
+        volatility *= math.exp(mean_reversion * math.log(annual_volatility / volatility) * dt
+                               + volatility_of_volatility * math.sqrt(dt) * generator.gauss(0, 1))
+        volatility = max(0.01, min(volatility, 3.0))
+        log_return = ((annual_drift - 0.5 * volatility ** 2) * dt
+                      + volatility * math.sqrt(dt) * generator.gauss(0, 1))
+        close = opening * math.exp(log_return)
+        intraday_range = abs(generator.gauss(0, 1)) * volatility * math.sqrt(dt)
+        high = max(opening, close) * math.exp(intraday_range / 2)
+        low = min(opening, close) * math.exp(-intraday_range / 2)
+        volume = max(1.0, volume_mean * math.exp(0.30 * generator.gauss(0, 1)))
+        bars.append(Bar(timestamp, symbol, opening, high, low, close, volume))
+        price = close
+        timestamp += timedelta(days=1)
+        while timestamp.weekday() >= 5:
+            timestamp += timedelta(days=1)
+    return tuple(bars)
 
 
 class InMemoryBarSource:

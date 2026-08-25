@@ -25,6 +25,25 @@ def _matplotlib() -> tuple[Any, Any]:
     return plt, mdates
 
 
+def _maximum_drawdown_interval(equity: Sequence[float]) -> tuple[int, int]:
+    """Return the peak and trough indices for the largest peak-to-trough loss."""
+    if not equity:
+        raise ValueError("equity must not be empty")
+    peak_index = 0
+    maximum_peak_index = 0
+    trough_index = 0
+    worst_drawdown = 0.0
+    for index, value in enumerate(equity):
+        if value > equity[peak_index]:
+            peak_index = index
+        drawdown = value / equity[peak_index] - 1.0 if equity[peak_index] else 0.0
+        if drawdown < worst_drawdown:
+            worst_drawdown = drawdown
+            maximum_peak_index = peak_index
+            trough_index = index
+    return maximum_peak_index, trough_index
+
+
 def plot_backtest_report(
     result: BacktestResult,
     bars: Sequence[Bar],
@@ -61,8 +80,7 @@ def plot_backtest_report(
     drawdowns = [(value / high - 1.0) if high else 0.0 for value, high in zip(equity, running_peak)]
     returns = [0.0] + [later / earlier - 1.0 if earlier else 0.0 for earlier, later in pairwise(equity)]
 
-    trough_index = min(range(len(drawdowns)), key=drawdowns.__getitem__)
-    peak_index = max(range(trough_index + 1), key=equity.__getitem__)
+    peak_index, trough_index = _maximum_drawdown_interval(equity)
 
     figure = plt.figure(figsize=(14, 10), constrained_layout=True)
     grid = figure.add_gridspec(3, 2, height_ratios=(3, 2, 1.1))

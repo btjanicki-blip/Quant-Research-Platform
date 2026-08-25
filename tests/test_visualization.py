@@ -9,6 +9,7 @@ from quant_research.data.sources import InMemoryBarSource
 from quant_research.execution.simulator import BarExecutionModel
 from quant_research.portfolio.portfolio import Portfolio
 from quant_research.visualization import plot_backtest_report
+from quant_research.visualization.backtest import _maximum_drawdown_interval
 
 matplotlib = pytest.importorskip("matplotlib")
 matplotlib.use("Agg", force=True)
@@ -52,3 +53,8 @@ def test_plot_backtest_report_saves_all_requested_panels(tmp_path) -> None:
         "Price and fills", "Equity and maximum drawdown", "Per-period returns", "Drawdown",
     ]
     plt.close(figure)
+
+
+def test_drawdown_interval_uses_the_peak_that_precedes_the_worst_trough() -> None:
+    # The initial pullback is not the maximum drawdown; the band must start at 120.
+    assert _maximum_drawdown_interval([100, 95, 120, 100, 105]) == (2, 3)
