@@ -44,6 +44,13 @@ def _maximum_drawdown_interval(equity: Sequence[float]) -> tuple[int, int]:
     return maximum_peak_index, trough_index
 
 
+def _per_period_returns(equity: Sequence[float]) -> list[float]:
+    """Return one value per equity point, retaining explicit zero-return flat bars."""
+    if not equity:
+        return []
+    return [0.0] + [later / earlier - 1.0 if earlier else 0.0 for earlier, later in pairwise(equity)]
+
+
 def plot_backtest_report(
     result: BacktestResult,
     bars: Sequence[Bar],
@@ -78,7 +85,7 @@ def plot_backtest_report(
         peak = max(peak, value)
         running_peak.append(peak)
     drawdowns = [(value / high - 1.0) if high else 0.0 for value, high in zip(equity, running_peak)]
-    returns = [0.0] + [later / earlier - 1.0 if earlier else 0.0 for earlier, later in pairwise(equity)]
+    returns = _per_period_returns(equity)
 
     peak_index, trough_index = _maximum_drawdown_interval(equity)
 
@@ -142,9 +149,12 @@ def plot_backtest_report(
         f"Fills  {performance.fill_count}     "
         f"Closed trades  {len(attribution.trades)}     "
         f"Win rate  {attribution.win_rate:.2%}     "
-        f"Expectancy  {attribution.expectancy:.2f}     "
+        f"Expectancy  ${attribution.expectancy:,.2f} / trade     "
         f"Profit factor  {attribution.profit_factor:.2f}"
     )
+    if result.open_positions:
+        positions = ", ".join(f"{symbol} {quantity:+g}" for symbol, quantity in result.open_positions)
+        metrics += f"\nOpen positions  {positions}"
     metrics_axis.text(0.01, 0.88, metrics, transform=metrics_axis.transAxes, va="top", fontsize=11,
                       bbox={"boxstyle": "round,pad=0.6", "facecolor": "#f4f4f4", "edgecolor": "#bbbbbb"})
     figure.suptitle(title or f"Backtest report: {selected_symbol}", fontsize=16)

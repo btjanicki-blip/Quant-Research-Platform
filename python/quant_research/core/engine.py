@@ -17,6 +17,7 @@ class BacktestResult:
     fills: tuple[Fill, ...]
     performance: PerformanceSummary
     trade_attribution: TradeAttribution
+    open_positions: tuple[tuple[str, float], ...] = ()
 
 
 class BacktestEngine:
@@ -59,9 +60,11 @@ class BacktestEngine:
         if curve and self._config.liquidate_at_end:
             self._liquidate_positions(last_bars, curve)
         fills = tuple(self._fills)
+        open_positions = tuple((symbol, position.quantity) for symbol, position in self._portfolio.positions.items()
+                               if position.quantity)
         result = BacktestResult(tuple(curve), fills,
                                 summarize(curve, fills, annual_risk_free_rate=self._config.annual_risk_free_rate),
-                                summarize_trades(fills))
+                                summarize_trades(fills), open_positions)
         if self._tracker:
             self._tracker.completed(result.performance, result.trade_attribution)
         return result

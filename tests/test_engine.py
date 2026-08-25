@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest import TestCase
 
 from quant_research.core.config import BacktestConfig
@@ -19,17 +19,18 @@ class BuyOnce:
 
 class EngineTest(TestCase):
     def test_orders_do_not_fill_on_the_same_bar_as_strategy_signal(self) -> None:
-        start = datetime(2025, 1, 1)
+        start = datetime(2025, 1, 1, tzinfo=UTC)
         bars = [Bar(start + timedelta(days=i), "ABC", 100 + i, 101 + i, 99 + i, 100 + i, 1000) for i in range(2)]
         result = BacktestEngine(InMemoryBarSource(bars), BuyOnce(), BarExecutionModel(latency_bars=0),
                                 Portfolio(1_000), BacktestConfig()).run()
         self.assertEqual(len(result.fills), 2)
         self.assertEqual(result.fills[0].timestamp, bars[1].timestamp)
         self.assertEqual(result.fills[-1].side, Side.SELL)
+        self.assertEqual(result.fills[-1].price, bars[-1].close)
         self.assertEqual(len(result.trade_attribution.trades), 1)
 
     def test_end_of_backtest_liquidation_includes_position_in_trade_metrics(self) -> None:
-        start = datetime(2025, 1, 1)
+        start = datetime(2025, 1, 1, tzinfo=UTC)
         bars = [Bar(start + timedelta(days=i), "ABC", 100 + 10 * i, 101 + 10 * i, 99 + 10 * i,
                     100 + 10 * i, 1_000) for i in range(3)]
         result = BacktestEngine(InMemoryBarSource(bars), BuyOnce(), BarExecutionModel(), Portfolio(1_000),
